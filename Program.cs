@@ -7,6 +7,12 @@ using DSharpPlus.Interactivity.Extensions;
 
 class Program
 {
+
+    public static class Globals
+    {
+        public static string CoinName = "Macca"; // Nome da moeda
+        public static string BotName = "Jack Frost"; // Nome da moeda, usado em mensagens
+    }
     public static async Task Main(string[] args)
     {
         var discord = new DiscordClient(new DiscordConfiguration
@@ -83,30 +89,51 @@ public class PingModule : BaseCommandModule
             await ctx.RespondAsync("Você não pode apostar contra si mesmo.");
             return;
         }
-        if (int.Parse(File.ReadAllText($"profile/{ctx.Member.Id}/coins")) < aposta)
+        string userPath = $"profile/{ctx.Member.Id}/coins";
+        string oponentePath = $"profile/{oponente.Id}/coins";
+        if (int.Parse(File.ReadAllText(userPath)) < aposta)
         {
             await ctx.RespondAsync("Você não tem dinheiro suficiente para essa aposta.");
             return;
         }
-        if (int.Parse(File.ReadAllText($"profile/{oponente.Id}/coins")) < aposta)
+        if (int.Parse(File.ReadAllText(oponentePath)) < aposta)
         {
-            await ctx.RespondAsync("Seu oponente dinheiro suficiente para essa aposta.");
+            await ctx.RespondAsync("Seu oponente não tem dinheiro suficiente para essa aposta.");
             return;
         }
 
-        var confirmMsg = await ctx.RespondAsync($"{oponente.Mention}, reaja com 👍 para confirmar a aposta de {aposta} contra {ctx.User.Mention}.");
+        var confirmMsg = await ctx.RespondAsync($"Atenção {oponente.Mention}, o {ctx.User.Mention} quer apostar {aposta} {Program.Globals.CoinName} com você. Reaja com 👍 em 15 segundos para confirmar a aposta.");
         await confirmMsg.CreateReactionAsync(DiscordEmoji.FromUnicode("👍"));
 
         var interactivity = ctx.Client.GetInteractivity();
         var reactionResult = await interactivity.WaitForReactionAsync(
             x => x.Message == confirmMsg && x.User == oponente && x.Emoji.GetDiscordName() == "👍",
-            TimeSpan.FromSeconds(30)
+            TimeSpan.FromSeconds(15)
         );
 
         if (reactionResult.TimedOut)
         {
-            await ctx.RespondAsync("Aposta cancelada: tempo esgotado para confirmação.");
+            await confirmMsg.ModifyAsync("Aposta cancelada: tempo esgotado para confirmação.");
             return;
         }
+
+        // Sorteia o vencedor
+        List<DiscordUser> contestants = new List<DiscordUser> { ctx.User, oponente };
+        DiscordUser winner = contestants[new Random().Next(contestants.Count)];
+        DiscordUser loser = winner.Id == ctx.User.Id ? oponente : ctx.User;
+
+        // Atualiza os saldos
+        string winnerPath = $"profile/{winner.Id}/coins";
+        string loserPath = $"profile/{loser.Id}/coins";
+        int winnerMoney = int.Parse(File.ReadAllText(winnerPath));
+        int loserMoney = int.Parse(File.ReadAllText(loserPath));
+
+        File.WriteAllText(winnerPath, (winnerMoney + aposta).ToString());
+        File.WriteAllText(loserPath, (loserMoney - aposta).ToString());
+
+        await confirmMsg.ModifyAsync(
+            $"Aposta confirmada! {ctx.User.Mention} apostou {aposta} contra {oponente.Mention}.\n" +
+            $"O vencedor é {winner.Mention}! {aposta} moedas foram transferidas de {loser.Mention} para {winner.Mention}."
+        );
     }
 }

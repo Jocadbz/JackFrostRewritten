@@ -150,4 +150,46 @@ public class PingModule : BaseCommandModule
         };
         await ctx.RespondAsync(embed: embed.Build());
     }
+
+    [Command("banner")]
+    public async Task BannerAsync(CommandContext ctx, DiscordUser user = null)
+    {
+        user ??= ctx.User; // Se nenhum usuário for especificado, usa o autor do comando
+        var bannerUrl = user.BannerUrl ?? "https://cdn.discordapp.com/embed/avatars/0.png"; // URL padrão se não houver banner
+        var embed = new DiscordEmbedBuilder
+        {
+            Title = $"Banner de {user.Username}",
+            ImageUrl = bannerUrl,
+            Color = DiscordColor.Blurple
+        };
+        await ctx.RespondAsync(embed: embed.Build());
+    }
+
+    [Command("battle")]
+    public async Task BattleAsync(CommandContext ctx, string oponente1, string oponente2)
+    {
+        // Arrays de frases de início e fim
+        string[] comeco = { "Foi por pouco, mas ", "E com grande folga, ", "Foi uma luta justa, mas " };
+        string[] fim = { "esmagando seu crânio.", "abrindo um buraco em seu peito.", "decepando sua cabeça." };
+        var random = new Random();
+
+        // Sorteia vencedor e perdedor
+        string vencedor, perdedor;
+        if (random.Next(2) == 0)
+        {
+            vencedor = oponente1;
+            perdedor = oponente2;
+        }
+        else
+        {
+            vencedor = oponente2;
+            perdedor = oponente1;
+        }
+
+        // Sorteia frases de início e fim
+        string fraseComeco = comeco[random.Next(comeco.Length)];
+        string fraseFim = fim[random.Next(fim.Length)];
+
+        await ctx.RespondAsync($"{fraseComeco}{vencedor} ganhou a luta contra {perdedor}, {fraseFim}");
+    }
 }

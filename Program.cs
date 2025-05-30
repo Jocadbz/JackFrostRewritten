@@ -136,4 +136,18 @@ public class PingModule : BaseCommandModule
             $"O vencedor é {winner.Mention}! {aposta} moedas foram transferidas de {loser.Mention} para {winner.Mention}."
         );
     }
+
+    [Command("avatar")]
+    public async Task AvatarAsync(CommandContext ctx, DiscordUser user = null)
+    {
+        user ??= ctx.User; // Se nenhum usuário for especificado, usa o autor do comando
+        var avatarUrl = user.AvatarUrl ?? user.DefaultAvatarUrl;
+        var embed = new DiscordEmbedBuilder
+        {
+            Title = $"Avatar de {user.Username}",
+            ImageUrl = avatarUrl,
+            Color = DiscordColor.Blurple
+        };
+        await ctx.RespondAsync(embed: embed.Build());
+    }
 }
